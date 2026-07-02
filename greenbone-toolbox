@@ -33,7 +33,7 @@ EOF
 echo -e "${YELLOW}====================================================================================================================${NC}"
 echo -e "${YELLOW} Menu de mantenimiento GVM${NC}"
 echo -e "${YELLOW}====================================================================================================================${NC}"
-echo -e "${YELLOW}1) DELETE Modo mantenimiento automático (DELETE feeds físicos, reports y DB > ${DAYS} días)${NC}"
+echo -e "${YELLOW}1) Modo mantenimiento automático (DELETE feeds físicos, reports y DB > ${DAYS} días)${NC}"
 echo -e "${YELLOW}2) Limpiar archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
 echo -e "${YELLOW}3) Optimizar base de datos (VACUUM FULL)${NC}"
 echo -e "${YELLOW}4) Reiniciar servicios y sincronizadores (postgresql, gvmd, gsad, ospd-openvas, openvasd)${NC}"
@@ -145,6 +145,7 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 
 3)
     echo "Limpiando registros vacíos y optimizando DB..."
+    # VACUUM FULL : bloquea greenbone para reescribir tabla y reducir tamaño en disco
     #sudo -u postgres psql -d "$DB_NAME" -U "$DB_USER" -c 'VACUUM FULL;'
     sudo -u postgres psql -d "$DB_NAME" -c "VACUUM FULL;"
     echo "Hecho."
