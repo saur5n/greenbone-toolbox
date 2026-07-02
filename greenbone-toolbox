@@ -26,7 +26,7 @@ else
 
 En Greenbone/GVM la información se divide en dos capas:
 Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (alerts CERT) | plugins (NVTs / NASL scripts)
-DB    → gvmd indexa el contenido de los feeds (hosts, vulns, tasks, targets, reports, permissions y results...)
+DB    → gvmd indexa y referencia el contenido de los feeds (hosts, vulns, tasks, targets, reports, permissions y results...)
 
 EOF
 
