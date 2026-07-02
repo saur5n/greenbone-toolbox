@@ -34,10 +34,9 @@ echo -e "${YELLOW}==============================================================
 echo -e "${YELLOW} Menu de mantenimiento GVM${NC}"
 echo -e "${YELLOW}====================================================================================================================${NC}"
 echo -e "${YELLOW}1) DELETE Modo mantenimiento automático (DELETE feeds físicos, reports y DB > ${DAYS} días)${NC}"
-echo -e "${YELLOW}2) Sincronizar feeds y reconstruir base de datos (greenbone-feed-sync + gvmd --rebuild)${NC}"
+echo -e "${YELLOW}2) Limpiar archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
 echo -e "${YELLOW}3) Optimizar base de datos (VACUUM FULL)${NC}"
 echo -e "${YELLOW}4) Reiniciar servicios y sincronizadores (postgresql, gvmd, gsad, ospd-openvas, openvasd)${NC}"
-echo -e "${YELLOW}5) Limpiar archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
 echo -e "${YELLOW}====================================================================================================================${NC}"
 echo "Selecciona una opción: "
 
@@ -51,9 +50,11 @@ case $opcion in
 
     # 1 Borrar partes físicas de los feeds con más de ${DAYS} días
     echo "Borrando partes físicas de los feeds con más de ${DAYS} días..."
-    systemctl stop gvmd ospd-openvas
+    systemctl stop gvmd
+    systemctl stop ospd-openvas
     find /var/lib/gvm/scap-data/* /var/lib/gvm/cert-data/* /var/lib/openvas/plugins/* -mtime +${DAYS} -exec rm -rf {} \;
-    systemctl start gvmd ospd-openvas
+    systemctl start gvmd
+    systemctl start ospd-openvas
     echo "Archivos físicos de los feeds con más de ${DAYS} días eliminados (/var/lib/gvm/scap-data/*, /var/lib/gvm/cert-data/* y /var/lib/openvas/plugins/*)."
 
     # 2 Borrar reports con más de ${DAYS} días
@@ -107,12 +108,7 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 "
     echo "Registros borrados de más de ${DAYS} días (reports, report_hosts, report_host_details, results, alerts)."
 
-    # 3 Limpiar registros vacíos y optimizar DB
-    echo "Limpiando registros vacíos y optimizando DB... (VACUUM FULL)"
-    sudo -u postgres psql -d "$DB_NAME" -U "$DB_USER" -c 'VACUUM FULL;'
-    echo "VACUUM FULL realizado."
-
-    # 4 Reinicio servicios
+    # 3 Reinicio servicios
     systemctl restart postgresql
     systemctl restart gvmd
     systemctl restart gsad
@@ -121,22 +117,30 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
     ;;
 
 2)
-    # descargo los feeds en archivos físicos
-    #greenbone-nvt-sync
-    #greenbone-scapdata-sync
-    #greenbone-certdata-sync
-    #greenbone-feed-sync
-    sudo runuser -u gvm -- greenbone-feed-sync --type all
-    # enlazo los feeds de los archivos a la db
-    sudo runuser -u gvm -- gvmd --rebuild
-    echo "Sincronizadores reiniciados (greenbone-feed-sync, greenbone-nvt-sync, greenbone-scapdata-sync, greenbone-certdata-sync) ."
+    # paro servicios
+    echo -e "${YELLOW}paro servicios${NC}"
+    sudo systemctl stop gvmd
+    sudo systemctl stop ospd-openvas
 
-    systemctl restart postgresql
-    systemctl restart gvmd
-    systemctl restart gsad
-    systemctl restart ospd-openvas
-    systemctl restart openvasd
-    echo "Servicios reiniciados (postgresql, gvmd, gsad, ospd-openvas y openvasd)."
+    # borro feeds físicos
+    echo -e "${YELLOW}elimino feeds físicos" ${NC}
+    sudo rm -rf /var/lib/gvm/scap-data/*
+    sudo rm -rf /var/lib/gvm/cert-data/*
+    #sudo rm -rf /var/lib/openvas/plugins/*
+
+    # Eliminar lock huérfano
+    echo -e "${YELLOW}elimino lock huérfano" ${NC}
+    sudo rm -f /var/lib/gvm/feed-update.lock
+
+    # levanto servicios
+    echo -e "${YELLOW}levanto servicios" ${NC}
+    sudo systemctl start gvmd
+    sudo systemctl start ospd-openvas
+
+    # Reconstruir cache y vaciar la DB de feeds
+    echo -e "${YELLOW}Reconstruyo cache y vacio la base de datos de feeds" ${NC}
+    sudo runuser -u gvm -- greenbone-feed-sync --type all
+    sudo runuser -u gvm -- gvmd --rebuild --verbose
     ;;
 
 3)
@@ -163,33 +167,6 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
     systemctl restart ospd-openvas
     systemctl restart openvasd
     echo "Servicios reiniciados (postgresql, gvmd, gsad, ospd-openvas y openvasd)."
-    ;;
-
-5)
-    # paro servicios
-    echo -e "${YELLOW}paro servicios${NC}"
-    sudo systemctl stop gvmd
-    sudo systemctl stop ospd-openvas
-
-    # borro feeds físicos
-    echo -e "${YELLOW}elimino feeds físicos" ${NC}
-    sudo rm -rf /var/lib/gvm/nvt/*
-    sudo rm -rf /var/lib/gvm/scap-data/*
-    sudo rm -rf /var/lib/gvm/cert-data/*
-
-    # Eliminar lock huérfano
-    echo -e "${YELLOW}elimino lock huérfano" ${NC}
-    sudo rm -f /var/lib/gvm/feed-update.lock
-
-    # levanto servicios
-    echo -e "${YELLOW}levanto servicios" ${NC}
-    sudo systemctl start gvmd
-    sudo systemctl start ospd-openvas
-
-    # Reconstruir cache y vaciar la DB de feeds
-    echo -e "${YELLOW}Reconstruyo cache y vacio la base de datos de feeds" ${NC}
-    sudo runuser -u gvm -- greenbone-feed-sync --type all
-    sudo runuser -u gvm -- gvmd --rebuild --verbose
     ;;
 
 *)
