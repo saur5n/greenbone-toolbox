@@ -4,7 +4,7 @@ Herramienta de mantenimiento automatizado para entornos Greenbone / GVM basada e
 
 ---
 
-## 📦 Instalación
+### 📦 Instalación
 
 ```bash
 vim /usr/bin/greenbone-toolbox
@@ -20,7 +20,7 @@ Ahora puedo ejecutar el script directamente: greenbone-toolbox
 ````
 
 
-## 📦 crontab -e (automátización)
+### 📦 crontab -e (automatización)
 ````
 # Optimización de base de datos PostgreSQL (VACUUM FULL)
 # Frecuencia: diaria
