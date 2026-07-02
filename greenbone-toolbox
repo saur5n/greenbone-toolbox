@@ -167,7 +167,7 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 
 5)
     # paro servicios
-    echo -e "${YELLOW}paro servicios" ${NC}
+    echo -e "${YELLOW}paro servicios${NC}"
     sudo systemctl stop gvmd
     sudo systemctl stop ospd-openvas
 
