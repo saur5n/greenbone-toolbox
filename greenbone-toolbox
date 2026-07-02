@@ -126,7 +126,7 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
     echo -e "${YELLOW}elimino feeds físicos" ${NC}
     sudo rm -rf /var/lib/gvm/scap-data/*
     sudo rm -rf /var/lib/gvm/cert-data/*
-    #sudo rm -rf /var/lib/openvas/plugins/*
+    sudo rm -rf /var/lib/openvas/plugins/*
 
     # Eliminar lock huérfano
     echo -e "${YELLOW}elimino lock huérfano" ${NC}
