@@ -119,8 +119,11 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 2)
     # paro servicios
     echo -e "${YELLOW}paro servicios${NC}"
-    sudo systemctl stop gvmd
-    sudo systemctl stop ospd-openvas
+    systemctl stop postgresql
+    systemctl stop gvmd
+    systemctl stop gsad
+    systemctl stop ospd-openvas
+    systemctl stop openvasd
 
     # borro feeds físicos
     echo -e "${YELLOW}elimino feeds físicos" ${NC}
@@ -134,8 +137,11 @@ WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 
     # levanto servicios
     echo -e "${YELLOW}levanto servicios" ${NC}
-    sudo systemctl start gvmd
-    sudo systemctl start ospd-openvas
+    systemctl restart postgresql
+    systemctl restart gvmd
+    systemctl restart gsad
+    systemctl restart ospd-openvas
+    systemctl restart openvasd
 
     # Reconstruir cache y vaciar la DB de feeds
     echo -e "${YELLOW}Reconstruyo cache y vacio la base de datos de feeds" ${NC}
