@@ -34,7 +34,3 @@ Ahora puedo ejecutar el script directamente: greenbone-toolbox
 ````
 
 
-
-## Objetivo
-
-ACTUALIZAR → LIMPIAR → OPTIMIZAR → RECONSTRUIR → REINICIAR
