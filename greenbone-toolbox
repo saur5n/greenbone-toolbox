@@ -34,7 +34,7 @@ echo -e "${YELLOW}==============================================================
 echo -e "${YELLOW} Menu de mantenimiento GVM${NC}"
 echo -e "${YELLOW}====================================================================================================================${NC}"
 echo -e "${YELLOW}1) Modo mantenimiento (DELETE feeds físicos, reports y DB > ${DAYS} días)${NC}"
-echo -e "${YELLOW}2) Eliminar archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
+echo -e "${YELLOW}2) Limpieza y regeneración en archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
 echo -e "${YELLOW}3) Optimizar base de datos (VACUUM FULL)${NC}"
 echo -e "${YELLOW}4) Reiniciar servicios y sincronizadores (postgresql, gvmd, gsad, ospd-openvas, openvasd)${NC}"
 echo -e "${YELLOW}====================================================================================================================${NC}"
