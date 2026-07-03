@@ -1,0 +1,248 @@
+#!/bin/bash
+# script para automatizar mantenimiento aplicación de Greenbone
+
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+NC='\033[0m'
+
+DB_NAME="gvmd"
+DB_USER="postgres"
+DAYS="15"
+
+# imprimo la fecha actual
+fecha() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+# Permitir ejecutar opción directamente por parámetro (para cron)
+if [ -n "$1" ]; then
+    opcion="$1"
+else
+    clear
+    cat << 'EOF'
+
+  __________                           ___.                          ___________           .__ ___.
+ /    _____/______   ____   ____   ____\_ |__   ____   ____   ____   \__    ___/___   ____ |  |\_ |__   _______  ___
+/     \  __\_  __ \_/ __ \_/ __ \ /    \| __ \ /  _ \ /    \_/ __ \    |    | /  _ \ /  _ \|  | | __ \ /  _ \  \/  /
+\      \_\  \  | \/\  ___/\  ___/|   |  \ \_\ (  <_> )   |  \  ___/    |    |(  <_> |  <_> )  |_| \_\ (  <_> >    <
+ \________  /__|    \___  >\___  >___|  /___  /\____/|___|  /\___  >   |____| \____/ \____/|____/___  /\____/__/\_ \
+          \/            \/     \/     \/    \/            \/     \/                                 \/            \/
+                                            Script de mantenimiento para Greenbone
+
+En Greenbone/GVM la información se divide en dos capas:
+Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (alerts CERT) | plugins/ (NVTs / NASL scripts)
+DB → gvmd utiliza PostgreSQL para almacenar y relacionar los datos contenidos en los feeds (hosts, vulns, tasks, targets, reports, permissions y results...)
+
+EOF
+
+echo -e "${YELLOW}====================================================================================================================${NC}"
+echo -e "${YELLOW} Menu de mantenimiento GVM${NC}"
+echo -e "${YELLOW}====================================================================================================================${NC}"
+echo -e "${YELLOW}[1] Modo mantenimiento (DELETE feeds físicos, reports y DB > ${DAYS} días)${NC}"
+echo -e "${YELLOW}[2] Limpiar y regenerar archivos físicos de feeds (/scap-data, /cert-data, /plugins)${NC}"
+echo -e "${YELLOW}[3] Optimizar base de datos (VACUUM FULL)${NC}"
+echo -e "${YELLOW}[4] Reiniciar servicios y sincronizadores (postgresql, gvmd, gsad, ospd-openvas, openvasd)${NC}"
+echo -e "${YELLOW}[5] Purgar registros huérfanos en la base de datos${NC}"
+echo -e "${YELLOW}====================================================================================================================${NC}"
+echo "Selecciona una opción: "
+
+read -p "" opcion
+fi
+
+case $opcion in
+
+1)
+    fecha "Ejecutando opción 1 (Modo mantenimiento)"
+    echo "Modo mantenimiento automático (elementos con más de ${DAYS} días)..."
+
+    # 1 Borrar partes físicas de los feeds con más de ${DAYS} días
+    echo "Borrando partes físicas de los feeds con más de ${DAYS} días..."
+    systemctl stop gvmd
+    systemctl stop ospd-openvas
+    find /var/lib/gvm/scap-data/* /var/lib/gvm/cert-data/* /var/lib/openvas/plugins/* -mtime +${DAYS} -exec rm -rf {} \;
+    systemctl start gvmd
+    systemctl start ospd-openvas
+    echo "Archivos físicos de los feeds con más de ${DAYS} días eliminados (/var/lib/gvm/scap-data/*, /var/lib/gvm/cert-data/* y /var/lib/openvas/plugins/*)."
+
+    # 2 Borrar reports con más de ${DAYS} días
+    echo "Borrando reports con más de ${DAYS} días..."
+    sudo -u $DB_USER psql -d $DB_NAME -c "
+-- ====[ ⚠️ ELIMINACIÓN DE TABLAS ORDENADA (PARA EVITAR DATOS HUÉRFANOS) ]=============================================
+
+-- 1 Eliminación de agregados de resultados asociados a informes antiguos
+DELETE FROM report_counts rc
+USING reports r
+WHERE rc.report = r.id
+AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- 2 Eliminación de resultados almacenados en la papelera asociados a informes antiguos
+DELETE FROM results_trash rt
+USING reports r
+WHERE rt.report = r.id
+AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- 3 Eliminación de metadatos detallados de hosts vinculados a reportes antiguos
+DELETE FROM report_host_details rhd
+USING report_hosts rh, reports r
+WHERE rhd.report_host = rh.id
+AND rh.report = r.id
+AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- 4 Eliminación de resultados de escaneo asociados a informes antiguos
+DELETE FROM results rs
+USING reports r
+WHERE rs.report = r.id
+AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- 5 Eliminación de entidades de host asociadas a informes antiguos
+DELETE FROM report_hosts rh
+USING reports r
+WHERE rh.report = r.id
+AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- ⚠️ Se preservan las alertas configuradas para mantener su reutilización en futuros escaneos.
+
+-- DELETE FROM alert_condition_data acd
+-- USING alerts a
+-- WHERE acd.alert = a.id
+-- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- DELETE FROM alert_event_data aed
+-- USING alerts a
+-- WHERE aed.alert = a.id
+-- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- DELETE FROM alert_method_data amd
+-- USING alerts a
+-- WHERE amd.alert = a.id
+-- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- DELETE FROM alerts a
+-- WHERE a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+
+-- 6 Eliminación final de informes antiguos
+DELETE FROM reports
+WHERE creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
+"
+    echo "Registros borrados de más de ${DAYS} días (reports, report_hosts, report_host_details, results)."
+
+    # 3 Reinicio servicios
+    systemctl restart postgresql
+    systemctl restart gvmd
+    systemctl restart gsad
+    systemctl restart ospd-openvas
+    systemctl restart openvasd
+    ;;
+
+2)
+    fecha "Ejecutando opción 2 (Limpiar y regenerar feeds)"
+
+    # paro servicios
+    echo -e "${YELLOW}Paro servicios${NC}"
+    systemctl stop postgresql
+    systemctl stop gvmd
+    systemctl stop gsad
+    systemctl stop ospd-openvas
+    systemctl stop openvasd
+
+    # borro feeds físicos
+    echo -e "${YELLOW}Elimino feeds físicos" ${NC}
+    sudo rm -rf /var/lib/gvm/scap-data/*
+    sudo rm -rf /var/lib/gvm/cert-data/*
+    sudo rm -rf /var/lib/openvas/plugins/*
+
+    # Eliminar lock huérfano
+    echo -e "${YELLOW}Elimino lock huérfano" ${NC}
+    sudo rm -f /var/lib/gvm/feed-update.lock
+
+    # levanto servicios
+    echo -e "${YELLOW}Levanto servicios" ${NC}
+    systemctl restart postgresql
+    systemctl restart gvmd
+    systemctl restart gsad
+    systemctl restart ospd-openvas
+    systemctl restart openvasd
+
+    # Reconstruir cache y vaciar la DB de feeds
+    echo -e "${YELLOW}Reconstruyo cache y vacio la base de datos de feeds" ${NC}
+    sudo runuser -u gvm -- greenbone-feed-sync --type all
+    sudo runuser -u gvm -- gvmd --rebuild --verbose
+    ;;
+
+3)
+    fecha "Ejecutando opción 3 (Optimizar base de datos)"
+    echo "Limpiando registros vacíos y optimizando DB..."
+
+    # VACUUM FULL : bloquea greenbone para reescribir tabla y reducir tamaño en disco
+    #sudo -u postgres psql -d "$DB_NAME" -U "$DB_USER" -c 'VACUUM FULL;'
+    sudo -u postgres psql -d "$DB_NAME" -c "VACUUM FULL;"
+    echo "Hecho."
+    ;;
+
+4)
+    fecha "Ejecutando opción 4 (Sincronización de feeds y reinicio de servicios)"
+
+    # descargo los feeds en archivos físicos
+    #greenbone-nvt-sync
+    #greenbone-scapdata-sync
+    #greenbone-certdata-sync
+    #greenbone-feed-sync
+    sudo runuser -u gvm -- greenbone-feed-sync --type all
+    # enlazo los feeds de los archivos a la db
+    sudo runuser -u gvm -- gvmd --rebuild
+    echo "Sincronizadores reiniciados (greenbone-feed-sync, greenbone-nvt-sync, greenbone-scapdata-sync, greenbone-certdata-sync) ."
+
+    systemctl restart postgresql
+    systemctl restart gvmd
+    systemctl restart gsad
+    systemctl restart ospd-openvas
+    systemctl restart openvasd
+    echo "Servicios reiniciados (postgresql, gvmd, gsad, ospd-openvas y openvasd)."
+    ;;
+
+5)
+    echo -e "${YELLOW}Operación de limpieza de inconsistencias. Se recomienda ejecutar previamente la limpieza por antigüedad [1], aunque no es obligatoria.${NC}"
+    echo -e "${YELLOW}¿Desea continuar? (y/N): ${NC}"
+    read -r respuesta
+
+    if [[ ! "$respuesta" =~ ^[yY]$ ]]; then
+        echo -e "${RED}Operación cancelada${NC}"
+        exit 0
+    fi
+
+    fecha "Ejecutando opción 5 (Limpieza de datos huéfanos en base de datos)"
+    echo "Ejecutando reparación de huérfanos (integridad DB)..."
+
+    sudo -u $DB_USER psql -d $DB_NAME -c "
+-- 1 Elimina contadores de reportes que ya no tienen relación con reportes existentes
+DELETE FROM report_counts
+WHERE report NOT IN (SELECT id FROM reports);
+
+-- 2 Elimina resultados en papelera que no están asociados a ningún reporte activo
+DELETE FROM results_trash
+WHERE report NOT IN (SELECT id FROM reports);
+
+-- 3 Elimina detalles de hosts huérfanos que ya no están vinculados a ningún report_host válido
+DELETE FROM report_host_details
+WHERE report_host NOT IN (SELECT id FROM report_hosts);
+
+-- 4 (Opcional) Elimina resultados de escaneo que no pertenecen a ningún reporte existente
+-- DELETE FROM results
+-- WHERE report NOT IN (SELECT id FROM reports);
+
+-- Limpieza de datos de alertas huérfanas si existieran referencias inconsistentes
+-- DELETE FROM alert_condition_data
+-- WHERE alert NOT IN (SELECT id FROM alerts);
+
+-- DELETE FROM alert_event_data
+-- WHERE alert NOT IN (SELECT id FROM alerts);
+
+-- DELETE FROM alert_method_data
+-- WHERE alert NOT IN (SELECT id FROM alerts);
+    "
+
+    echo "Limpieza de datos huérfanos completada."
+    ;;
+
+*)
+    echo -e "${RED}Opción inválida${NC}"
+    ;;
+esac
