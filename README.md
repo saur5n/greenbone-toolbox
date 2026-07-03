@@ -35,7 +35,6 @@ Ahora puedo ejecutar el script directamente: greenbone-toolbox
 
 ### 📦 Comprobar tablas existentes
 ````
-sudo -u postgres psql -d gvmd -c "\d report_counts"
 sudo -u postgres psql -d gvmd -c "\dt"
 sudo -u postgres psql -d gvmd -c "\d reports"
 sudo -u postgres psql -d gvmd -c "\d report_hosts"
