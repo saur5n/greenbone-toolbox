@@ -33,4 +33,17 @@ Ahora puedo ejecutar el script directamente: greenbone-toolbox
 02 00 1 * * * /usr/bin/greenbone-toolbox 4 >> /var/log/gvm-feed.log 2>&1
 ````
 
+### 📦 Comprobar tablas existentes
+````
+sudo -u postgres psql -d gvmd -c "\d report_counts"
+sudo -u postgres psql -d gvmd -c "\dt"
+sudo -u postgres psql -d gvmd -c "\d reports"
+sudo -u postgres psql -d gvmd -c "\d report_hosts"
+sudo -u postgres psql -d gvmd -c "\d report_host_details"
+sudo -u postgres psql -d gvmd -c "\d results"
+sudo -u postgres psql -d gvmd -c "\d results_trash"
+sudo -u postgres psql -d gvmd -c "\d alerts"
+sudo -u postgres psql -d gvmd -c "\d report_counts"
+````
+
 
