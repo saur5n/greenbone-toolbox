@@ -28,7 +28,7 @@ else
                                             Script de mantenimiento para Greenbone
 
 En Greenbone/GVM la información se divide en dos capas:
-Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (alerts CERT) | plugins/ (NVTs / NASL scripts)
+Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (CERT Advisories) | plugins/ (NVTs / NASL scripts)
 DB → gvmd utiliza PostgreSQL para almacenar y relacionar los datos contenidos en los feeds (hosts, vulns, tasks, targets, reports, permissions y results...)
 
 EOF
@@ -97,26 +97,6 @@ DELETE FROM report_hosts rh
 USING reports r
 WHERE rh.report = r.id
 AND r.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
-
--- ⚠️ Se preservan las alertas configuradas para mantener su reutilización en futuros escaneos.
-
--- DELETE FROM alert_condition_data acd
--- USING alerts a
--- WHERE acd.alert = a.id
--- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
-
--- DELETE FROM alert_event_data aed
--- USING alerts a
--- WHERE aed.alert = a.id
--- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
-
--- DELETE FROM alert_method_data amd
--- USING alerts a
--- WHERE amd.alert = a.id
--- AND a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
-
--- DELETE FROM alerts a
--- WHERE a.creation_time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '${DAYS} days'));
 
 -- 6 Eliminación final de informes antiguos
 DELETE FROM reports
@@ -223,20 +203,6 @@ WHERE report NOT IN (SELECT id FROM reports);
 -- 3 Elimina detalles de hosts huérfanos que ya no están vinculados a ningún report_host válido
 DELETE FROM report_host_details
 WHERE report_host NOT IN (SELECT id FROM report_hosts);
-
--- 4 (Opcional) Elimina resultados de escaneo que no pertenecen a ningún reporte existente
--- DELETE FROM results
--- WHERE report NOT IN (SELECT id FROM reports);
-
--- Limpieza de datos de alertas huérfanas si existieran referencias inconsistentes
--- DELETE FROM alert_condition_data
--- WHERE alert NOT IN (SELECT id FROM alerts);
-
--- DELETE FROM alert_event_data
--- WHERE alert NOT IN (SELECT id FROM alerts);
-
--- DELETE FROM alert_method_data
--- WHERE alert NOT IN (SELECT id FROM alerts);
     "
 
     echo "Limpieza de datos huérfanos completada."
