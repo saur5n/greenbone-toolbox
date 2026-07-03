@@ -1,6 +1,6 @@
 # 🟢 Greenbone Toolbox - Automatización GVM
 
-Herramienta de mantenimiento automatizado para entornos Greenbone / GVM basada en PostgreSQL + feeds SCAP/CERT/NVT.
+Herramienta de mantenimiento automatizado para entornos Greenbone / GVM basada en PostgreSQL + feeds.
 
 ---
 
