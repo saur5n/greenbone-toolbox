@@ -3,8 +3,13 @@
 # script para automatizar mantenimiento aplicación de Greenbone
 # -------------------------------------------------------------
 # En Greenbone/GVM la información se divide en dos capas (archivos físicos y base de datos):
-# + Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (CERT Advisories) | plugins/ (NVTs / NASL scripts).
-# + DB → gvmd utiliza PostgreSQL para almacenar y relacionar los datos contenidos en los feeds (hosts, vulns, tasks, targets, reports, permissions y results...).
+# +  Feeds descargados (ficheros en disco): fuente temporal.
+#     - scap-data/ → CVEs, CPEs, OVAL, definiciones SCAP
+#     - cert-data/ → Alertas y bulletins CERT.
+#     - plugins/   → NVTs (scripts NASL), nasl-data. (en versiones antiguas se referencia como nvt/)
+# +  Base de datos PostgreSQL (gvmd DB): cada registro actua como “punteros” y metadatos que permiten buscar y relacionar vulnerabilidades con tareas/escaneos de los archivos físicos.
+#     - Se indexan, relacionandose como los resultados de tus escaneos CVEs ↔ Hosts ↔ Vulnerabilidades encontradas.
+#     - También ahí se guardan tasks, targets, resultados de escaneo, reportes, usuarios, permisos, etc.
 
 YELLOW='\033[1;33m'
 RED='\033[1;31m'
