@@ -9,7 +9,7 @@
 #     - plugins/   → NVTs (scripts NASL), nasl-data. (en versiones antiguas se referencia como nvt/)
 # +  Base de datos PostgreSQL (gvmd DB): cada registro actua como “punteros” y metadatos que permiten buscar y relacionar vulnerabilidades con tareas/escaneos de los archivos físicos.
 #     - Se indexan, relacionandose como los resultados de tus escaneos CVEs ↔ Hosts ↔ Vulnerabilidades encontradas.
-#     - También ahí se guardan tasks, targets, resultados de escaneo, reportes, usuarios, permisos, etc.
+#     - También se guardan ahí tasks, targets, resultados de escaneo, reportes, usuarios, permisos, etc.
 
 YELLOW='\033[1;33m'
 RED='\033[1;31m'
