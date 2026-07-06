@@ -28,8 +28,8 @@ else
                              Script de mantenimiento para Greenbone
 
 En Greenbone/GVM la información se divide en dos capas:
-Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (CERT Advisories) | plugins/ (NVTs / NASL scripts)
-DB → gvmd utiliza PostgreSQL para almacenar y relacionar los datos contenidos en los feeds (hosts, vulns, tasks, targets, reports, permissions y results...)
++ Feeds → scap-data/ (CVEs/OVAL/CPEs) | cert-data/ (CERT Advisories) | plugins/ (NVTs / NASL scripts).
++ DB → gvmd utiliza PostgreSQL para almacenar y relacionar los datos contenidos en los feeds (hosts, vulns, tasks, targets, reports, permissions y results...).
 
 EOF
 
