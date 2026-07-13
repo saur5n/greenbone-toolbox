@@ -22,6 +22,9 @@ Ahora puedo ejecutar el script directamente: greenbone-toolbox
 
 ### 📦 crontab -e (automatización)
 ````
+# Resincronizar la hora de mi servidor local
+00 05 * * * /usr/sbin/ntpdate -s hora.roa.es
+
 # Optimización de base de datos PostgreSQL (VACUUM FULL)
 # Frecuencia: diaria
 00 21 * * * /usr/bin/greenbone-toolbox 3 >> /var/log/greenbone-system.log 2>&1
